@@ -21,7 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        });
+
+        $exceptions->render(function (\Throwable $e, $request) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        });
     })->create();
     
     require base_path('routes/channels.php');

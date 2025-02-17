@@ -23,10 +23,49 @@
     const editor = document.getElementById("editor");
     const userList = document.getElementById("user-list");
 
+    // const pusher = new Pusher("{{ env('PUSHER_APP_KEY') }}", {
+    //     cluster: "{{ env('PUSHER_APP_CLUSTER') }}",
+    //     forceTLS: true
+    // });
+
     const pusher = new Pusher("{{ env('PUSHER_APP_KEY') }}", {
         cluster: "{{ env('PUSHER_APP_CLUSTER') }}",
-        forceTLS: true
+        forceTLS: true,
+        authEndpoint: "/broadcasting/auth", 
+        auth: {
+            headers: {
+            "X-CSRF-TOKEN": "{{ csrf_token() }}",  
+            "Authorization": "Bearer {{ auth()->user()->api_token ?? '' }}"  
+        }
+        }
     });
+
+    const presenceChannel = pusher.subscribe(`presence-document.${documentId}`);
+
+    // When a user joins
+    presenceChannel.bind("pusher:subscription_succeeded", function(members) {
+        updateUserList(members);
+    });
+
+    // When a new user joins
+    presenceChannel.bind("pusher:member_added", function(member) {
+        updateUserList(presenceChannel.members);
+    });
+
+    // When a user leaves
+    presenceChannel.bind("pusher:member_removed", function(member) {
+        updateUserList(presenceChannel.members);
+    });
+
+    function updateUserList(members) {
+        userList.innerHTML = ""; // Clear the list
+        members.each((member) => {
+            const li = document.createElement("li");
+            li.classList.add("list-group-item");
+            li.textContent = member.info.name;
+            userList.appendChild(li);
+        });
+    }
 
     const channel = pusher.subscribe(`document.${documentId}`);
     channel.bind("document.updated", function(data) {
@@ -53,6 +92,18 @@
         }).then(response => response.json())
         .then(data => console.log(data.message));
     }
+
+    editor.addEventListener("focus", function() {
+        fetch(`/document/${documentId}/editing`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            }
+        });
+    });
+
+
 </script>
 <script src="https://cdn.bootcss.com/jquery/2.2.4/jquery.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote-lite.min.css" rel="stylesheet">
