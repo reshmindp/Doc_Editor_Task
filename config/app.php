@@ -123,4 +123,8 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'aliases' => [
+    'Toastr'  => Brian2694\Toastr\Facades\Toastr::class
+    ],
+
 ];
